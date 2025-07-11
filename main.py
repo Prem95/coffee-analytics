@@ -63,27 +63,20 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # Main title with modern styling
-st.markdown('<h1 class="main-header">The Coffee. ザ。コーヒー</h1>', unsafe_allow_html=True)
+st.markdown('<h1 class="main-header">the coffee ザ。コーヒー</h1>', unsafe_allow_html=True)
 
 # Location options (defined before sidebar)
 location_options = {
     "LG 15 + 14 (666 sqft)": {
         "unit": "LG 15 + 14",
         "sqft": 666,
-        "rate_per_sqft": 13,
-        "monthly_rent": 666 * 13,
-    },
-    "LG 03 (484 sqft)": {
-        "unit": "LG 03", 
-        "sqft": 484,
-        "rate_per_sqft": 13,
-        "monthly_rent": 484 * 13,
-    },
-    "LG 12 (620 sqft)": {
-        "unit": "LG 12",
-        "sqft": 620,
-        "rate_per_sqft": 11,
-        "monthly_rent": 620 * 11,
+        "y1_rate": 9,
+        "y2_rate": 10,
+        "y3_rate": 11,
+        "y1_rent": 666 * 9,
+        "y2_rent": 666 * 10,
+        "y3_rent": 666 * 11,
+        "renovation_months": 3,
     }
 }
 
@@ -93,18 +86,54 @@ with st.sidebar:
     
     # Location Selection
     with st.expander("📍 Location", expanded=True):
-        selected_location = st.selectbox(
-            "Choose Your Location",
-            options=list(location_options.keys()),
-            help="Select one of the three available units. Each has different size and rental rates."
+        # Since there's only one location, auto-select it
+        selected_location = list(location_options.keys())[0]
+        location_info = location_options[selected_location]
+        
+        st.markdown(f"**Selected Unit**: {location_info['unit']}")
+        st.markdown(f"**Size**: {location_info['sqft']} sqft")
+        
+        # Year selection
+        selected_year = st.selectbox(
+            "Lease Year",
+            options=["Year 1", "Year 2", "Year 3"],
+            help="Select which year of the lease to analyze. Rental rates may vary by year."
         )
         
-        location_info = location_options[selected_location]
-        st.info(f"""
-        - Size: {location_info['sqft']} sqft
-        - Rate: RM {location_info['rate_per_sqft']}/sqft
-        - Monthly Rent: RM {location_info['monthly_rent']:,}
-        """)
+        # Signing period
+        col_month, col_year = st.columns(2)
+        with col_month:
+            signing_month = st.selectbox(
+                "Signing Month",
+                options=["Jan", "Feb", "Mar", "Apr", "May", "Jun", 
+                        "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
+                index=7,  # August
+                help="Month when lease agreement is signed"
+            )
+        with col_year:
+            signing_year = st.number_input(
+                "Signing Year",
+                value=2025,
+                min_value=2024,
+                max_value=2030,
+                step=1,
+                help="Year when lease agreement is signed"
+            )
+        
+        renovation_months = location_info['renovation_months']
+        st.info(f"**Renovation Period**: {renovation_months} months rent-free from {signing_month} {signing_year}")
+        
+        # Get current year's rate and rent
+        year_mapping = {"Year 1": "y1", "Year 2": "y2", "Year 3": "y3"}
+        current_year = year_mapping[selected_year]
+        current_rate = location_info[f"{current_year}_rate"]
+        current_rent = location_info[f"{current_year}_rent"]
+        
+        # Show all year rates for comparison
+        st.markdown("**All Years:**")
+        st.markdown(f"Y1: RM {location_info['y1_rate']}/sqft (RM {location_info['y1_rent']:,})")
+        st.markdown(f"Y2: RM {location_info['y2_rate']}/sqft (RM {location_info['y2_rent']:,})")
+        st.markdown(f"Y3: RM {location_info['y3_rate']}/sqft (RM {location_info['y3_rent']:,})")
     
     # Revenue Settings
     with st.expander("Revenue", expanded=True):
@@ -126,10 +155,10 @@ with st.sidebar:
     
     # Cost Settings
     with st.expander("Operating Costs", expanded=True):
-        # Use selected location rent (read-only display)
-        st.markdown(f"**Monthly Rent**: RM {location_info['monthly_rent']:,}")
-        st.caption(f"Based on {location_info['unit']}: {location_info['sqft']} sqft × RM {location_info['rate_per_sqft']}/sqft")
-        monthly_rent = location_info['monthly_rent']  # Set from location selection
+        # Use selected location and year rent (read-only display)
+        st.markdown(f"**Monthly Rent**: RM {current_rent:,}")
+        st.caption(f"Based on {location_info['unit']} {selected_year}: {location_info['sqft']} sqft × RM {current_rate}/sqft")
+        monthly_rent = current_rent  # Set from location and year selection
         
         employee_count = st.slider(
             "Number of Employees", 
@@ -182,13 +211,26 @@ monthly_sales = transactions_per_day * avg_transaction_value * days_open
 royalty_fee = (royalty_percent / 100) * monthly_sales
 marketing_fee = (marketing_percent / 100) * monthly_sales
 total_salary = employee_count * employee_salary
+
+# Calculate renovation savings (only applies to Year 1)
+if selected_year == "Year 1":
+    renovation_savings = current_rent * renovation_months
+    monthly_renovation_benefit = renovation_savings / 12  # Spread over 12 months
+else:
+    renovation_savings = 0
+    monthly_renovation_benefit = 0
+
 total_fixed_costs = monthly_rent + total_salary + electricity + water + tech_fee_rm + royalty_fee + marketing_fee
 net_profit = monthly_sales - total_fixed_costs
 profit_margin = (net_profit / monthly_sales * 100) if monthly_sales > 0 else 0
 
+# Adjusted profit including renovation benefit (Year 1 only)
+adjusted_profit = net_profit + monthly_renovation_benefit
+adjusted_margin = (adjusted_profit / monthly_sales * 100) if monthly_sales > 0 else 0
+
 # Key Metrics with modern cards
 st.markdown("---")
-col1, col2, col3, col4 = st.columns(4)
+col1, col2, col3, col4, col5 = st.columns(5)
 
 with col1:
     st.metric(
@@ -212,13 +254,32 @@ with col3:
     )
 
 with col4:
-    margin_color = "normal" if profit_margin >= 0 else "inverse"
+    renovation_benefit_color = "normal" if monthly_renovation_benefit > 0 else "inverse"
     st.metric(
-        label="Profit Margin",
-        value=f"{profit_margin:.1f}%",
-        delta_color=margin_color,
-        help="Profit as percentage of total sales. Higher margins indicate better profitability and pricing efficiency"
+        label="Adjusted Profit",
+        value=f"RM {adjusted_profit:,.0f}",
+        delta=f"+RM {monthly_renovation_benefit:,.0f} renovation benefit",
+        delta_color=renovation_benefit_color,
+        help=f"Net profit including {renovation_months}-month rent-free benefit spread over 12 months"
     )
+
+with col5:
+    margin_color = "normal" if adjusted_margin >= 0 else "inverse"
+    st.metric(
+        label="Adjusted Margin",
+        value=f"{adjusted_margin:.1f}%",
+        delta=f"+{adjusted_margin - profit_margin:.1f}%",
+        delta_color=margin_color,
+        help="Profit margin including renovation savings benefit"
+    )
+
+# Renovation Benefit Summary
+if selected_year == "Year 1" and monthly_renovation_benefit > 0:
+    st.success(f"💰 **Year 1 Renovation Savings**: RM {renovation_savings:,} total ({renovation_months} months × RM {current_rent:,}) = +RM {monthly_renovation_benefit:,.0f} monthly benefit")
+elif selected_year == "Year 1":
+    st.info("ℹ️ No renovation benefit calculated")
+else:
+    st.info(f"ℹ️ **{selected_year}**: No renovation benefit (rent-free period was in Year 1 only)")
 
 tab1, tab2 = st.tabs(["Cost Analysis", "Investment & ROI"])
 
