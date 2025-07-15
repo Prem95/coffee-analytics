@@ -3,7 +3,6 @@ try:
     import pandas as pd
     import plotly.express as px
     import plotly.graph_objects as go
-    import numpy as np
 except ModuleNotFoundError as e:
     print("Missing required module:", e)
     print("Please run: pip install streamlit plotly pandas numpy")
@@ -70,12 +69,12 @@ location_options = {
     "LG 15 + 14 (666 sqft)": {
         "unit": "LG 15 + 14",
         "sqft": 666,
-        "y1_rate": 9,
-        "y2_rate": 10,
-        "y3_rate": 11,
-        "y1_rent": 666 * 9,
-        "y2_rent": 666 * 10,
-        "y3_rent": 666 * 11,
+        "y1_rate": 8.50,
+        "y2_rate": 9,
+        "y3_rate": 9.5,
+        "y1_rent": 666 * 8.5,
+        "y2_rent": 666 * 9,
+        "y3_rent": 666 * 9.5,
         "renovation_months": 3,
     }
 }
@@ -85,13 +84,10 @@ with st.sidebar:
     st.markdown("### Settings")
     
     # Location Selection
-    with st.expander("📍 Location", expanded=True):
+    with st.expander("Tenancy", expanded=True):
         # Since there's only one location, auto-select it
         selected_location = list(location_options.keys())[0]
         location_info = location_options[selected_location]
-        
-        st.markdown(f"**Selected Unit**: {location_info['unit']}")
-        st.markdown(f"**Size**: {location_info['sqft']} sqft")
         
         # Year selection
         selected_year = st.selectbox(
@@ -121,8 +117,7 @@ with st.sidebar:
             )
         
         renovation_months = location_info['renovation_months']
-        st.info(f"**Renovation Period**: {renovation_months} months rent-free from {signing_month} {signing_year}")
-        
+                
         # Get current year's rate and rent
         year_mapping = {"Year 1": "y1", "Year 2": "y2", "Year 3": "y3"}
         current_year = year_mapping[selected_year]
@@ -136,7 +131,7 @@ with st.sidebar:
         st.markdown(f"Y3: RM {location_info['y3_rate']}/sqft (RM {location_info['y3_rent']:,})")
     
     # Revenue Settings
-    with st.expander("Revenue", expanded=True):
+    with st.expander("Sales & Revenue", expanded=True):
         transactions_per_day = st.number_input(
             "Daily Transactions", 
             min_value=10, max_value=50, value=20, step=1,
@@ -144,7 +139,7 @@ with st.sidebar:
         )
         avg_transaction_value = st.number_input(
             "Avg Transaction (RM)", 
-            value=20.0, step=1.0, min_value=1.0,
+            value=15.0, step=1.0, min_value=1.0,
             help="Average amount each customer spends per visit. Higher values mean more revenue per customer. Example: RM 20 means each customer spends RM 20 on average"
         )
         days_open = st.slider(
@@ -156,30 +151,28 @@ with st.sidebar:
     # Cost Settings
     with st.expander("Operating Costs", expanded=True):
         # Use selected location and year rent (read-only display)
-        st.markdown(f"**Monthly Rent**: RM {current_rent:,}")
-        st.caption(f"Based on {location_info['unit']} {selected_year}: {location_info['sqft']} sqft × RM {current_rate}/sqft")
         monthly_rent = current_rent  # Set from location and year selection
         
         employee_count = st.slider(
             "Number of Employees", 
             1, 3, value=1,
-            help="Total number of staff members. More employees can serve more customers but increase labor costs. Total salary cost = Number of Employees × Salary per Employee"
+            help="Total number of staff members"
         )
         employee_salary = st.number_input(
             "Salary per Employee (RM)", 
-            value=1800, step=100, min_value=0,
-            help="Monthly salary paid to each employee. This excludes benefits, EPF, SOCSO. In Malaysia, minimum wage varies by state (~RM 1,500-1,700 as of 2025)"
+            value=1900, step=100, min_value=0,
+            help="Monthly salary paid to each employee"
         )
         
         electricity = st.number_input(
             "Electricity (RM)", 
-            value=300, step=100, min_value=0,
-            help="Monthly electricity bill. Coffee shops use power for espresso machines, grinders, lighting, air conditioning. Varies based on equipment and operating hours"
+            value=1500, step=100, min_value=0,
+            help="Monthly electricity bill"
         )
         water = st.number_input(
             "Water (RM)", 
-            value=100, step=100, min_value=0,
-            help="Monthly water bill. Used for coffee brewing, cleaning, and customer consumption. Generally lower than electricity costs"
+            value=200, step=100, min_value=0,
+            help="Monthly water bill"
         )
         
     # Store Fees
