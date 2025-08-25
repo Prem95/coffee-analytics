@@ -66,15 +66,15 @@ st.markdown('<h1 class="main-header">the coffee ザ。コーヒー</h1>', unsafe
 
 # Location options (defined before sidebar)
 location_options = {
-    "LG 15 + 14 (666 sqft)": {
+    "LG 15 + 14 (606.40 sqft)": {
         "unit": "LG 15 + 14",
-        "sqft": 666,
+        "sqft": 606.40,
         "y1_rate": 8.50,
         "y2_rate": 9,
         "y3_rate": 9.5,
-        "y1_rent": 666 * 8.5,
-        "y2_rent": 666 * 9,
-        "y3_rent": 666 * 9.5,
+        "y1_rent": 606.40 * 8.5,
+        "y2_rent": 606.40 * 9,
+        "y3_rent": 606.40 * 9.5,
         "renovation_months": 3,
     }
 }
@@ -92,8 +92,7 @@ with st.sidebar:
         # Year selection
         selected_year = st.selectbox(
             "Lease Year",
-            options=["Year 1", "Year 2", "Year 3"],
-            help="Select which year of the lease to analyze. Rental rates may vary by year."
+            options=["Year 1", "Year 2", "Year 3"]
         )
         
         # Signing period
@@ -103,8 +102,7 @@ with st.sidebar:
                 "Signing Month",
                 options=["Jan", "Feb", "Mar", "Apr", "May", "Jun", 
                         "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
-                index=7,  # August
-                help="Month when lease agreement is signed"
+                index=7  # August
             )
         with col_year:
             signing_year = st.number_input(
@@ -112,8 +110,7 @@ with st.sidebar:
                 value=2025,
                 min_value=2024,
                 max_value=2030,
-                step=1,
-                help="Year when lease agreement is signed"
+                step=1
             )
         
         renovation_months = location_info['renovation_months']
@@ -126,88 +123,122 @@ with st.sidebar:
         
         # Show all year rates for comparison
         st.markdown("**All Years:**")
-        st.markdown(f"Y1: RM {location_info['y1_rate']}/sqft (RM {location_info['y1_rent']:,})")
-        st.markdown(f"Y2: RM {location_info['y2_rate']}/sqft (RM {location_info['y2_rent']:,})")
-        st.markdown(f"Y3: RM {location_info['y3_rate']}/sqft (RM {location_info['y3_rent']:,})")
+        st.markdown(f"Y1: RM {location_info['y1_rate']}/sqft (RM {location_info['y1_rent']:,.0f})")
+        st.markdown(f"Y2: RM {location_info['y2_rate']}/sqft (RM {location_info['y2_rent']:,.0f})")
+        st.markdown(f"Y3: RM {location_info['y3_rate']}/sqft (RM {location_info['y3_rent']:,.0f})")
     
     # Revenue Settings
     with st.expander("Sales & Revenue", expanded=True):
-        transactions_per_day = st.number_input(
-            "Daily Transactions", 
-            min_value=10, max_value=50, value=20, step=1,
-            help="Average number of customers served per day. This directly affects your total revenue: Daily Transactions × Avg Transaction × Operating Days = Monthly Sales"
-        )
+        col_weekday, col_weekend = st.columns(2)
+        
+        with col_weekday:
+            weekday_transactions = st.number_input(
+                "Weekday Transactions", 
+                min_value=5, max_value=50, value=20, step=1,
+                help="Average transactions per weekday (Monday-Friday)"
+            )
+        
+        with col_weekend:
+            weekend_transactions = st.number_input(
+                "Weekend Transactions", 
+                min_value=10, max_value=80, value=40, step=1,
+                help="Average transactions per weekend day (Saturday-Sunday)"
+            )
+        
         avg_transaction_value = st.number_input(
             "Avg Transaction (RM)", 
-            value=15.0, step=1.0, min_value=1.0,
-            help="Average amount each customer spends per visit. Higher values mean more revenue per customer. Example: RM 20 means each customer spends RM 20 on average"
+            value=20.0, step=1.0, min_value=1.0
         )
+        
+        # Calculate total monthly transactions
+        weekday_days = 22  # Average weekdays per month (5 days × 4.4 weeks)
+        weekend_days = 8    # Average weekend days per month (2 days × 4 weeks)
+        total_monthly_transactions = (weekday_transactions * weekday_days) + (weekend_transactions * weekend_days)
+        
+        # Calculate daily sales for each day type
+        weekday_daily_sales = weekday_transactions * avg_transaction_value
+        weekend_daily_sales = weekend_transactions * avg_transaction_value
+        
+        per_month_sales = weekday_transactions * avg_transaction_value * weekday_days + weekend_transactions * avg_transaction_value * weekend_days
+        
+        # Display daily and monthly sales
+        col_daily1, col_daily2, col_monthly = st.columns(3)
+        with col_daily1:
+            st.markdown(f"**Weekday Sales**: RM {weekday_daily_sales:,.0f}/day")
+        with col_daily2:
+            st.markdown(f"**Weekend Sales**: RM {weekend_daily_sales:,.0f}/day")
+        with col_monthly:
+            st.markdown(f"**Monthly Sales**: RM {per_month_sales:,.0f}")
+        
+        
         days_open = st.slider(
             "Operating Days/Month", 
-            min_value=20, max_value=31, value=30,
-            help="Number of days your coffee shop operates per month. More operating days = more potential revenue, but also higher variable costs"
+            min_value=20, max_value=31, value=30
         )
     
     # Cost Settings
     with st.expander("Operating Costs", expanded=True):
-        # Use selected location and year rent (read-only display)
-        monthly_rent = current_rent  # Set from location and year selection
         
         employee_count = st.slider(
             "Number of Employees", 
-            1, 3, value=1,
-            help="Total number of staff members"
+            1, 7, value=6
         )
         employee_salary = st.number_input(
             "Salary per Employee (RM)", 
-            value=1900, step=100, min_value=0,
-            help="Monthly salary paid to each employee"
+            value=2100, step=100, min_value=0
         )
         
         electricity = st.number_input(
             "Electricity (RM)", 
-            value=1500, step=100, min_value=0,
-            help="Monthly electricity bill"
+            value=2000, step=100, min_value=0
         )
         water = st.number_input(
             "Water (RM)", 
-            value=200, step=100, min_value=0,
-            help="Monthly water bill"
+            value=200, step=100, min_value=0
         )
+    
+    # GTO Rent Settings
+    with st.expander("GTO Rent Settings", expanded=False):
+        use_gto = st.checkbox("Apply GTO Rent (Turnover Rent)?", value=True)
+        gto_percentage = st.number_input("GTO Rate (%)", value=8.0, step=0.1, min_value=0.0)
+    
+    # Fixed Store Fees
+    with st.expander("Fixed Fees", expanded=False):
+        st.markdown("**Tech Fee**: $150 USD")
+        st.markdown("**Royalties**: 5%")
+        st.markdown("**Marketing**: 0.5%")
         
-    # Store Fees
-    with st.expander("Store Fees"):
-        tech_fee_usd = st.number_input(
-            "Tech Fee (USD)", 
-            value=150.0, step=10.0, min_value=0.0,
-            help="Monthly technology costs in USD (POS systems, software subscriptions, payment processing). Will be converted to RM using the exchange rate below"
-        )
         usd_to_rm = st.number_input(
             "USD to RM Rate", 
-            value=4.28, step=0.01, min_value=1.0,
-            help="Current USD to Malaysian Ringgit exchange rate. Used to convert tech fees from USD to RM. Check current rates online (typically 4.2-4.7 range)"
+            value=4.28, step=0.01, min_value=1.0
         )
-        royalty_percent = st.slider(
-            "Royalty (%)", 
-            0.0, 15.0, value=5.5, step=0.1,
-            help="Franchise royalty percentage of gross sales. If you're franchising a brand, they typically charge 3-8% of total revenue. Set to 0% if you own your brand independently"
-        )
-        marketing_percent = st.number_input(
-            "Marketing (%)", 
-            value=0.5, step=0.1, min_value=0.0, max_value=5.0,
-            help="Fixed marketing expense as percentage of gross sales. Covers advertising, promotions, social media marketing, and brand building activities. Typically 0.5-2% of revenue"
-        )
+    
+    tech_fee_usd = 150.0
+    royalty_percent = 5.0
+    marketing_percent = 0.5
 
 # Calculations
 tech_fee_rm = tech_fee_usd * usd_to_rm
-monthly_sales = transactions_per_day * avg_transaction_value * days_open
+monthly_sales = total_monthly_transactions * avg_transaction_value
 royalty_fee = (royalty_percent / 100) * monthly_sales
 marketing_fee = (marketing_percent / 100) * monthly_sales
 total_salary = employee_count * employee_salary
 
+# GTO Rent Logic
+if use_gto:
+    calculated_gto_rent = (gto_percentage / 100) * monthly_sales
+    base_rent = max(current_rent, calculated_gto_rent)
+else:
+    base_rent = current_rent
+
+# Apply 8% SST to rental
+sst_rate = 0.08
+sst_amount = base_rent * sst_rate
+monthly_rent = base_rent + sst_amount
+
 # Calculate renovation savings (only applies to Year 1)
 if selected_year == "Year 1":
-    renovation_savings = current_rent * renovation_months
+    renovation_savings = base_rent * renovation_months
     monthly_renovation_benefit = renovation_savings / 12  # Spread over 12 months
 else:
     renovation_savings = 0
@@ -223,13 +254,13 @@ adjusted_margin = (adjusted_profit / monthly_sales * 100) if monthly_sales > 0 e
 
 # Key Metrics with modern cards
 st.markdown("---")
-col1, col2, col3, col4, col5 = st.columns(5)
+col1, col2, col3 = st.columns(3)
 
 with col1:
     st.metric(
         label="Monthly Revenue",
         value=f"RM {monthly_sales:,.0f}",
-        help="Total sales before expenses. Formula: Daily Transactions × Avg Transaction × Operating Days"
+        help="Total sales before expenses. Formula: (Weekday Transactions × 22 weekdays + Weekend Transactions × 8 weekends) × Avg Transaction"
     )
 
 with col2:
@@ -246,34 +277,6 @@ with col3:
         help="Money left after all expenses. Formula: Monthly Revenue - Total Costs"
     )
 
-with col4:
-    renovation_benefit_color = "normal" if monthly_renovation_benefit > 0 else "inverse"
-    st.metric(
-        label="Adjusted Profit",
-        value=f"RM {adjusted_profit:,.0f}",
-        delta=f"+RM {monthly_renovation_benefit:,.0f} renovation benefit",
-        delta_color=renovation_benefit_color,
-        help=f"Net profit including {renovation_months}-month rent-free benefit spread over 12 months"
-    )
-
-with col5:
-    margin_color = "normal" if adjusted_margin >= 0 else "inverse"
-    st.metric(
-        label="Adjusted Margin",
-        value=f"{adjusted_margin:.1f}%",
-        delta=f"+{adjusted_margin - profit_margin:.1f}%",
-        delta_color=margin_color,
-        help="Profit margin including renovation savings benefit"
-    )
-
-# Renovation Benefit Summary
-if selected_year == "Year 1" and monthly_renovation_benefit > 0:
-    st.success(f"💰 **Year 1 Renovation Savings**: RM {renovation_savings:,} total ({renovation_months} months × RM {current_rent:,}) = +RM {monthly_renovation_benefit:,.0f} monthly benefit")
-elif selected_year == "Year 1":
-    st.info("ℹ️ No renovation benefit calculated")
-else:
-    st.info(f"ℹ️ **{selected_year}**: No renovation benefit (rent-free period was in Year 1 only)")
-
 tab1, tab2 = st.tabs(["Cost Analysis", "Investment & ROI"])
 
 with tab1:
@@ -282,10 +285,11 @@ with tab1:
     with col1:
         # Interactive Pie Chart with Plotly
         cost_data = {
-            'Category': ['Rent', 'Salaries', 'Electricity', 'Water', 'Tech Fee', 'Royalties', 'Marketing'],
-            'Amount': [monthly_rent, total_salary, electricity, water, tech_fee_rm, royalty_fee, marketing_fee],
+            'Category': ['Base Rent', 'SST (8%)', 'Salaries', 'Electricity', 'Water', 'Tech Fee', 'Royalties', 'Marketing'],
+            'Amount': [base_rent, sst_amount, total_salary, electricity, water, tech_fee_rm, royalty_fee, marketing_fee],
             'Percentage': [
-                (monthly_rent/total_fixed_costs*100) if total_fixed_costs > 0 else 0,
+                (base_rent/total_fixed_costs*100) if total_fixed_costs > 0 else 0,
+                (sst_amount/total_fixed_costs*100) if total_fixed_costs > 0 else 0,
                 (total_salary/total_fixed_costs*100) if total_fixed_costs > 0 else 0,
                 (electricity/total_fixed_costs*100) if total_fixed_costs > 0 else 0,
                 (water/total_fixed_costs*100) if total_fixed_costs > 0 else 0,
@@ -320,7 +324,7 @@ with tab1:
             percentage = cost_data['Percentage'][i]
             amount = cost_data['Amount'][i]
             if percentage > 0:
-                st.markdown(f"**{category}**: RM {amount:,.0f} ({percentage:.1f}%)")
+                st.markdown(f"**{category}**: RM {amount:,.0f} ({percentage:.0f}%)")
 
 with tab2:
     st.markdown("#### Investment Analysis")
@@ -331,7 +335,7 @@ with tab2:
     with col1:
         initial_investment = st.number_input(
             "Initial Investment (RM)",
-            value=150000,
+            value=100000,
             step=10000,
             min_value=0,
             help="Total upfront investment including equipment, renovation, initial inventory, licensing, and working capital"
@@ -352,35 +356,27 @@ with tab2:
     st.markdown("---")
     st.markdown("#### ROI Metrics")
     
-    roi_col1, roi_col2, roi_col3, roi_col4 = st.columns(4)
+    roi_col1, roi_col2, roi_col3 = st.columns(3)
     
     with roi_col1:
         st.metric(
             "Payback Period",
-            f"{payback_months:.1f} months" if payback_months != float('inf') else "Never",
+            f"{payback_months:.0f} months" if payback_months != float('inf') else "Never",
             help="Time needed to recover initial investment based on current monthly profit"
         )
     
     with roi_col2:
         st.metric(
             "Payback in Years",
-            f"{payback_years:.1f} years" if payback_years != float('inf') else "Never",
+            f"{payback_years:.0f} years" if payback_years != float('inf') else "Never",
             help="Payback period expressed in years"
         )
     
     with roi_col3:
         st.metric(
             "Annual ROI",
-            f"{annual_roi:.1f}%" if annual_roi > 0 else "0.0%",
+            f"{annual_roi:.0f}%" if annual_roi > 0 else "0.0%",
             help="Return on Investment per year as percentage of initial investment"
-        )
-    
-    with roi_col4:
-        break_even_point = "Month 1" if net_profit > 0 else "Not Profitable"
-        st.metric(
-            "Monthly Break-even",
-            break_even_point,
-            help="When monthly operations become profitable (excluding initial investment recovery)"
         )
     
     # Investment Breakdown Visualization
@@ -435,16 +431,16 @@ st.markdown("### Summary")
 # Create comprehensive summary dataframe
 summary_data = {
     "Metric": [
-        "Daily Transactions", "Avg Transaction Value", "Operating Days", 
-        "Monthly Revenue", "Staff Salaries", "Rent",
+        "Weekday Transactions", "Weekend Transactions", "Total Monthly Transactions", "Avg Transaction Value", 
+        "Monthly Revenue", "Staff Salaries", "Base Rent", "SST (8%)", "Total Rent",
         "Electricity", "Water", "Technology Fee", "Royalty Fees", "Marketing Fees",
         "Total Costs", "Net Profit", "Profit Margin"
     ],
     "Value": [
-        f"{transactions_per_day:,}", f"RM {avg_transaction_value:.2f}", f"{days_open}",
-        f"RM {monthly_sales:,.2f}", f"RM {total_salary:,.2f}", f"RM {monthly_rent:,.2f}",
-        f"RM {electricity:.2f}", f"RM {water:.2f}", f"RM {tech_fee_rm:.2f}", f"RM {royalty_fee:.2f}", f"RM {marketing_fee:.2f}",
-        f"RM {total_fixed_costs:.2f}", f"RM {net_profit:.2f}", f"{profit_margin:.2f}%"
+        f"{weekday_transactions:,}", f"{weekend_transactions:,}", f"{total_monthly_transactions:,}", f"RM {avg_transaction_value:.0f}",
+        f"RM {monthly_sales:,.0f}", f"RM {total_salary:,.0f}", f"RM {base_rent:,.0f}", f"RM {sst_amount:,.0f}", f"RM {monthly_rent:,.0f}",
+        f"RM {electricity:.0f}", f"RM {water:.0f}", f"RM {tech_fee_rm:.0f}", f"RM {royalty_fee:.0f}", f"RM {marketing_fee:.0f}",
+        f"RM {total_fixed_costs:.0f}", f"RM {net_profit:.0f}", f"{profit_margin:.0f}%"
     ]
 }
 
