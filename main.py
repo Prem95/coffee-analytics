@@ -8,7 +8,6 @@ except ModuleNotFoundError as e:
     print("Please run: pip install streamlit plotly pandas numpy")
     exit()
 
-# Page configuration
 st.set_page_config(
     page_title="PnL Analysis",
     page_icon="🍵",
@@ -16,7 +15,6 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS for modern styling
 st.markdown("""
 <style>
     .main-header {
@@ -58,13 +56,36 @@ st.markdown("""
         border-left: 4px solid #FF6B35;
         margin: 1rem 0;
     }
+    
+    /* Compact spacing */
+    .main .block-container {
+        padding-top: 1rem;
+        padding-bottom: 1rem;
+        padding-left: 1rem;
+        padding-right: 1rem;
+        max-width: 1200px;
+    }
+    
+    .stExpander {
+        margin-bottom: 0.5rem;
+    }
+    
+    .stExpander > div {
+        padding: 0.5rem;
+    }
+    
+    .element-container {
+        margin-bottom: 0.5rem;
+    }
+    
+    .stMarkdown {
+        margin-bottom: 0.25rem;
+    }
 </style>
 """, unsafe_allow_html=True)
 
-# Main title with modern styling
 st.markdown('<h1 class="main-header">the coffee ザ。コーヒー</h1>', unsafe_allow_html=True)
 
-# Location options (defined before sidebar)
 location_options = {
     "LG 15 + 14 (606.40 sqft)": {
         "unit": "LG 15 + 14",
@@ -79,30 +100,44 @@ location_options = {
     }
 }
 
-# Sidebar with modern design
+def calculate_epf(salary, is_malaysian=True):
+    """
+    Calculate EPF employer contribution based on Malaysian EPF rates.
+    - Malaysian citizens: 12% (current standard rate)
+    - Non-Malaysian citizens: 2%
+    - Amount is rounded up to the next Ringgit
+    """
+    if is_malaysian:
+        employer_rate = 0.12  # Current standard rate for all salaries
+    else:
+        employer_rate = 0.02  # Non-Malaysian citizens
+    
+    epf_amount = salary * employer_rate
+    # Round up to next Ringgit
+    return int(epf_amount) + (1 if epf_amount % 1 > 0 else 0)
+
+if 'staff_list' not in st.session_state:
+    st.session_state.staff_list = []
+
 with st.sidebar:
     st.markdown("### Settings")
     
-    # Location Selection
     with st.expander("Tenancy", expanded=True):
-        # Since there's only one location, auto-select it
         selected_location = list(location_options.keys())[0]
         location_info = location_options[selected_location]
         
-        # Year selection
         selected_year = st.selectbox(
             "Lease Year",
             options=["Year 1", "Year 2", "Year 3"]
         )
         
-        # Signing period
         col_month, col_year = st.columns(2)
         with col_month:
             signing_month = st.selectbox(
                 "Signing Month",
                 options=["Jan", "Feb", "Mar", "Apr", "May", "Jun", 
                         "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
-                index=7  # August
+                index=7
             )
         with col_year:
             signing_year = st.number_input(
@@ -115,34 +150,29 @@ with st.sidebar:
         
         renovation_months = location_info['renovation_months']
                 
-        # Get current year's rate and rent
         year_mapping = {"Year 1": "y1", "Year 2": "y2", "Year 3": "y3"}
         current_year = year_mapping[selected_year]
         current_rate = location_info[f"{current_year}_rate"]
         current_rent = location_info[f"{current_year}_rent"]
         
-        # Show all year rates for comparison
         st.markdown("**All Years:**")
         st.markdown(f"Y1: RM {location_info['y1_rate']}/sqft (RM {location_info['y1_rent']:,.0f})")
         st.markdown(f"Y2: RM {location_info['y2_rate']}/sqft (RM {location_info['y2_rent']:,.0f})")
         st.markdown(f"Y3: RM {location_info['y3_rate']}/sqft (RM {location_info['y3_rent']:,.0f})")
     
-    # Revenue Settings
     with st.expander("Sales & Revenue", expanded=True):
         col_weekday, col_weekend = st.columns(2)
         
         with col_weekday:
             weekday_daily_sales = st.number_input(
                 "Sales per Day (Weekday)", 
-                min_value=100, max_value=2000, value=500, step=50,
-                help="Average daily sales for weekdays (Monday-Friday)"
+                min_value=100, max_value=2000, value=500, step=50
             )
         
         with col_weekend:
             weekend_daily_sales = st.number_input(
                 "Sales per Day (Weekend)", 
-                min_value=200, max_value=3000, value=900, step=50,
-                help="Average daily sales for weekends (Saturday-Sunday)"
+                min_value=200, max_value=3000, value=900, step=50
             )
         
         days_open = st.slider(
@@ -150,22 +180,18 @@ with st.sidebar:
             min_value=20, max_value=31, value=30
         )
         
-        # Calculate monthly sales based on operating days
         if days_open <= 28:
-            # Use proportional calculation based on 28-day cycle
-            weekday_ratio = 20/28  # 20 weekdays out of 28 days
-            weekend_ratio = 8/28   # 8 weekends out of 28 days
+            weekday_ratio = 20/28
+            weekend_ratio = 8/28
             weekday_days = int(days_open * weekday_ratio)
             weekend_days = int(days_open * weekend_ratio)
         else:
-            # For more than 28 days, add extra days proportionally
             extra_days = days_open - 28
             weekday_days = 20 + int(extra_days * 20/28)
             weekend_days = 8 + int(extra_days * 8/28)
         
         monthly_sales = (weekday_daily_sales * weekday_days) + (weekend_daily_sales * weekend_days)
         
-        # Display summary
         st.markdown("---")
         col_summary1, col_summary2, col_summary3 = st.columns(3)
         with col_summary1:
@@ -175,46 +201,54 @@ with st.sidebar:
         with col_summary3:
             st.markdown(f"**Monthly Sales**: RM {monthly_sales:,.0f}")
     
-    # Cost Settings
+    with st.expander("Staff Management", expanded=True):
+        # Add Staff - Compact layout
+        col1, col2 = st.columns([2, 1.5])
+        
+        with col1:
+            staff_name = st.text_input("Name", key="staff_name_input", placeholder="Enter name")
+        with col2:
+            staff_salary = st.number_input("Salary + Allowance", value=2000, step=100, min_value=0, key="staff_salary_input")
+        
+        # Fixed position
+        staff_position = "Barista"
+        
+        if st.button("Add Staff", key="add_staff_button", use_container_width=True):
+            if staff_name and staff_position:
+                epf_contribution = calculate_epf(staff_salary, True)  # Default to Malaysian
+                st.session_state.staff_list.append({
+                    'name': staff_name,
+                    'position': staff_position,
+                    'salary': staff_salary,
+                    'is_malaysian': True,
+                    'epf': epf_contribution,
+                    'total_cost': staff_salary + epf_contribution
+                })
+                st.rerun()
+        
+        # Current Staff - Simple display
+        if st.session_state.staff_list:
+            st.markdown("**Current Staff:**")
+            for idx, staff in enumerate(st.session_state.staff_list):
+                col1, col2 = st.columns([5, 1])
+                with col1:
+                    st.markdown(f"**{staff['name']}** - RM {staff['total_cost']:,.0f}")
+                with col2:
+                    if st.button("×", key=f"remove_{idx}", help="Remove staff"):
+                        st.session_state.staff_list.pop(idx)
+                        st.rerun()
+            
+            # Total staff cost only
+            total_staff_cost = sum(s['total_cost'] for s in st.session_state.staff_list)
+            st.metric("Total Staff Cost", f"RM {total_staff_cost:,.0f}")
+        else:
+            st.info("No staff added yet")
+            total_staff_cost = 0
+        
+        # Store in session state for use in calculations
+        st.session_state.total_staff_cost = total_staff_cost
+    
     with st.expander("Operating Costs", expanded=True):
-        
-        # Full-time staff
-        st.markdown("**Full-time Staff**")
-        fulltime_count = st.slider(
-            "Number of Full-time Staff", 
-            0, 3, value=2
-        )
-        fulltime_salary = st.number_input(
-            "Full-time Salary + Allowance (RM)", 
-            value=2000, step=100, min_value=0,
-            help="Monthly salary for full-time staff (8 hours/day)"
-        )
-        
-        # Part-time staff
-        st.markdown("**Part-time Staff**")
-        parttime_count = st.slider(
-            "Number of Part-time Staff", 
-            0, 3, value=2
-        )
-        parttime_hourly_rate = st.number_input(
-            "Part-time Hourly Rate (RM)", 
-            value=9.50, step=0.50, min_value=0.0,
-            help="Hourly rate for part-time staff"
-        )
-        parttime_hours_per_day = st.number_input(
-            "Hours per Part-time Staff per Day", 
-            value=4, step=1, min_value=0,
-            help="Hours worked by each part-time staff member per day"
-        )
-        
-        # Display staffing cost
-        st.markdown("---")
-        fulltime_cost = fulltime_count * fulltime_salary
-        parttime_monthly_cost = parttime_count * parttime_hours_per_day * parttime_hourly_rate * 30
-        
-        st.markdown(f"**Full-time:** RM {fulltime_cost:,}")
-        st.markdown(f"**Part-time:** RM {parttime_monthly_cost:,}")
-        
         electricity = st.number_input(
             "Electricity (RM)", 
             value=2000, step=100, min_value=0
@@ -224,13 +258,11 @@ with st.sidebar:
             value=200, step=100, min_value=0
         )
     
-    # GTO Rent Settings
     with st.expander("GTO Rent Settings", expanded=False):
         use_gto = st.checkbox("Apply GTO Rent (Turnover Rent)?", value=True)
         gto_percentage = 7.5 
         st.markdown(f"**GTO Rate**: {gto_percentage}%")
     
-    # Fixed Store Fees
     with st.expander("Fixed Fees", expanded=False):
         st.markdown("**Tech Fee**: $150 USD")
         st.markdown("**Royalties**: 5%")
@@ -245,70 +277,53 @@ with st.sidebar:
     royalty_percent = 5.0
     marketing_percent = 0.5
 
-# Calculations
 tech_fee_rm = tech_fee_usd * usd_to_rm
-# monthly_sales is already calculated in the Revenue Settings section
 royalty_fee = (royalty_percent / 100) * monthly_sales
 marketing_fee = (marketing_percent / 100) * monthly_sales
 
-# Calculate staffing costs
-fulltime_total = fulltime_count * fulltime_salary
-parttime_total_hours_per_day = parttime_count * parttime_hours_per_day  # Total hours for all part-time staff
-parttime_total_hours_per_month = parttime_total_hours_per_day * 30  # Convert daily to monthly
-parttime_total = parttime_total_hours_per_month * parttime_hourly_rate
-total_salary = fulltime_total + parttime_total
-
-# GTO Rent Logic
 if use_gto:
     calculated_gto_rent = (gto_percentage / 100) * monthly_sales
     base_rent = max(current_rent, calculated_gto_rent)
 else:
     base_rent = current_rent
 
-# Apply 8% SST to rental
 sst_rate = 0.08
 sst_amount = base_rent * sst_rate
 monthly_rent = base_rent + sst_amount
 
-# Calculate renovation savings (only applies to Year 1)
 if selected_year == "Year 1":
     renovation_savings = base_rent * renovation_months
-    monthly_renovation_benefit = renovation_savings / 12  # Spread over 12 months
+    monthly_renovation_benefit = renovation_savings / 12
 else:
     renovation_savings = 0
     monthly_renovation_benefit = 0
 
-total_fixed_costs = monthly_rent + total_salary + electricity + water + tech_fee_rm + royalty_fee + marketing_fee
+total_fixed_costs = monthly_rent + st.session_state.total_staff_cost + electricity + water + tech_fee_rm + royalty_fee + marketing_fee
 net_profit = monthly_sales - total_fixed_costs
 profit_margin = (net_profit / monthly_sales * 100) if monthly_sales > 0 else 0
 
-# Adjusted profit including renovation benefit (Year 1 only)
 adjusted_profit = net_profit + monthly_renovation_benefit
 adjusted_margin = (adjusted_profit / monthly_sales * 100) if monthly_sales > 0 else 0
 
-# Key Metrics with modern cards
 st.markdown("---")
 col1, col2, col3 = st.columns(3)
 
 with col1:
     st.metric(
         label="Monthly Revenue",
-        value=f"RM {monthly_sales:,.0f}",
-        help="Total sales before expenses. Formula: (Weekday Sales × 20 days) + (Weekend Sales × 8 days)"
+        value=f"RM {monthly_sales:,.0f}"
     )
 
 with col2:
     st.metric(
         label="Total Costs",
-        value=f"RM {total_fixed_costs:,.0f}",
-        help="Sum of all monthly expenses: Rent + Salaries + Utilities + Tech Fees + Royalties"
+        value=f"RM {total_fixed_costs:,.0f}"
     )
 
 with col3:
     st.metric(
         label="Net Profit",
-        value=f"RM {net_profit:,.0f}",
-        help="Money left after all expenses. Formula: Monthly Revenue - Total Costs"
+        value=f"RM {net_profit:,.0f}"
     )
 
 tab1, tab2 = st.tabs(["Cost Analysis", "Investment & ROI"])
@@ -317,15 +332,13 @@ with tab1:
     col1, col2 = st.columns([2, 1])
 
     with col1:
-        # Interactive Pie Chart with Plotly
         cost_data = {
-            'Category': ['Base Rent', 'SST (8%)', 'Full-time Staff', 'Part-time Staff', 'Electricity', 'Water', 'Tech Fee', 'Royalties', 'Marketing'],
-            'Amount': [base_rent, sst_amount, fulltime_total, parttime_total, electricity, water, tech_fee_rm, royalty_fee, marketing_fee],
+            'Category': ['Base Rent', 'SST (8%)', 'Staff Costs', 'Electricity', 'Water', 'Tech Fee', 'Royalties', 'Marketing'],
+            'Amount': [base_rent, sst_amount, st.session_state.total_staff_cost, electricity, water, tech_fee_rm, royalty_fee, marketing_fee],
             'Percentage': [
                 (base_rent/total_fixed_costs*100) if total_fixed_costs > 0 else 0,
                 (sst_amount/total_fixed_costs*100) if total_fixed_costs > 0 else 0,
-                (fulltime_total/total_fixed_costs*100) if total_fixed_costs > 0 else 0,
-                (parttime_total/total_fixed_costs*100) if total_fixed_costs > 0 else 0,
+                (st.session_state.total_staff_cost/total_fixed_costs*100) if total_fixed_costs > 0 else 0,
                 (electricity/total_fixed_costs*100) if total_fixed_costs > 0 else 0,
                 (water/total_fixed_costs*100) if total_fixed_costs > 0 else 0,
                 (tech_fee_rm/total_fixed_costs*100) if total_fixed_costs > 0 else 0,
@@ -334,7 +347,6 @@ with tab1:
             ]
         }
         
-        # Create DataFrame for proper Plotly usage
         cost_df = pd.DataFrame(cost_data)
         
         fig_pie = px.pie(
@@ -364,7 +376,6 @@ with tab1:
 with tab2:
     st.markdown("#### Investment Analysis")
     
-    # Investment input
     col1, col2 = st.columns(2)
     
     with col1:
@@ -372,12 +383,10 @@ with tab2:
             "Initial Investment (RM)",
             value=130000,
             step=10000,
-            min_value=0,
-            help="Total upfront investment including equipment, renovation, initial inventory, licensing, and working capital"
+            min_value=0
         )
     
     with col2:
-        # Calculate ROI metrics
         if net_profit > 0:
             payback_months = initial_investment / net_profit
             payback_years = payback_months / 12
@@ -385,7 +394,6 @@ with tab2:
             payback_months = float('inf')
             payback_years = float('inf')
     
-    # ROI Metrics Display
     st.markdown("---")
     st.markdown("#### ROI Metrics")
     
@@ -394,23 +402,19 @@ with tab2:
     with roi_col1:
         st.metric(
             "Payback Period (Months)",
-            f"{payback_months:.0f} months" if payback_months != float('inf') else "Never",
-            help="Time needed to recover initial investment based on current monthly profit"
+            f"{payback_months:.0f} months" if payback_months != float('inf') else "Never"
         )
     
     with roi_col2:
         st.metric(
             "Payback Period (Years)",
-            f"{payback_years:.0f} years" if payback_years != float('inf') else "Never",
-            help="Payback period expressed in years"
+            f"{payback_years:.0f} years" if payback_years != float('inf') else "Never"
         )
     
-    # Investment Breakdown Visualization
     if net_profit > 0:
         st.markdown("---")
         
-        # Create timeline chart
-        months = list(range(1, min(int(payback_months) + 13, 61)))  # Show up to 5 years max
+        months = list(range(1, min(int(payback_months) + 13, 61)))
         cumulative_profit = [net_profit * month for month in months]
         remaining_investment = [max(0, initial_investment - profit) for profit in cumulative_profit]
         
@@ -447,25 +451,20 @@ with tab2:
         
         st.plotly_chart(fig_timeline, use_container_width=True)
     else:
-        st.error("Business is not currently profitable. Focus on reducing costs or increasing revenue before considering ROI.")
-        st.markdown("**Investment Recovery**: Cannot calculate - business is losing money monthly")
+        st.error("Business is not currently profitable.")
 
-# Enhanced Summary Section
 st.markdown("---")
 st.markdown("### Summary")
 
-# Create comprehensive summary dataframe
 summary_data = {
     "Metric": [
         "Weekday Daily Sales", "Weekend Daily Sales", "Monthly Revenue", 
-        "Full-time Staff Cost", "Part-time Staff Cost", "Total Staff Cost", 
-        "Base Rent", "SST (8%)", "Total Rent", "Electricity", "Water", "Technology Fee", "Royalty Fees", "Marketing Fees",
+        "Total Staff Cost", "Base Rent", "SST (8%)", "Total Rent", "Electricity", "Water", "Technology Fee", "Royalty Fees", "Marketing Fees",
         "Total Costs", "Net Profit", "Profit Margin"
     ],
     "Value": [
         f"RM {weekday_daily_sales:,.0f}", f"RM {weekend_daily_sales:,.0f}", f"RM {monthly_sales:,.0f}",
-        f"RM {fulltime_total:,.0f}", f"RM {parttime_total:,.0f}", f"RM {total_salary:,.0f}",
-        f"RM {base_rent:,.0f}", f"RM {sst_amount:,.0f}", f"RM {monthly_rent:,.0f}",
+        f"RM {st.session_state.total_staff_cost:,.0f}", f"RM {base_rent:,.0f}", f"RM {sst_amount:,.0f}", f"RM {monthly_rent:,.0f}",
         f"RM {electricity:.0f}", f"RM {water:.0f}", f"RM {tech_fee_rm:.0f}", f"RM {royalty_fee:.0f}", f"RM {marketing_fee:.0f}",
         f"RM {total_fixed_costs:.0f}", f"RM {net_profit:.0f}", f"{profit_margin:.0f}%"
     ]
